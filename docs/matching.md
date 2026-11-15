@@ -36,6 +36,25 @@ candidate. Everything happens inside Orpheon's 25 s hook budget.
 | Arabic (no Persian or Urdu letters) | `ar`, `en` | SA |
 | Latin only | `en` | US |
 
+Store-side suffixes are cut from **both** titles before any comparison: dash forms
+(`- Remastered`, `- Single Version / Mono`, `- From "…" Soundtrack`), trailing
+`(with …)` groups and `[From "movie"]` brackets. The same cuts run on the YouTube
+title, so a note kept on one store and dropped on the other converges instead of
+diverging. Words that merely reorder the title are left alone.
+
+When the search passes find nothing and the track carries an album, one extra pass
+searches the album's name, opens the official album on YouTube Music and matches the
+track inside its own listing by title, length and album name. Album pages sometimes
+link a track to its official music video instead of the audio row; those rows are
+accepted here, and the actual stream's length is still verified at fetch time. In
+this pass only, an artist alias is tolerated when the two names share at least one
+4+-character word (`Cass Elliot` / `Mama Cass`); a different artist's cover
+(`Connor Spiotto` / `Annapantsu`) shares no word and stays refused. Stores also
+write a Japanese artist in romaji where the catalog writes kanji (`Amatsuki` /
+`天月-あまつき-`): there the name cannot be compared at all, and when the store's
+album name disagrees with the catalog's (a single here, an album there), the row
+that passes title and length opens its own album listing as the confirmation.
+
 ## Gates
 
 - **Length window:** −5 s / +15 s around the track's `durationMs` — the same window
@@ -51,7 +70,8 @@ candidate. Everything happens inside Orpheon's 25 s hook budget.
 - **Title similarity ≥ 0.85** (Levenshtein over letters-only, case- and
   width-normalized). Chinese uses 0.75: stores drift between simplified and
   traditional glyphs. A store title that appears verbatim inside the YouTube title
-  (transliteration prefixes, leftover notes) counts as 0.9.
+  (transliteration prefixes, leftover notes) counts as 0.9 — also for 2-character
+  CJK titles, whose official rows carry a transliteration suffix (白日 → 白日 (Hakujitsu)).
 - **Artist equality or containment ≥ 0.9:** exact match, or containment of the store
   name in the channel name (or the reverse) — minimum 2 characters for CJK, kana and
   hangul names, 4 for Latin ones, so short CJK artist names survive alias suffixes

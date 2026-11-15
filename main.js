@@ -232,14 +232,27 @@
         return normalized(value).replace(/[^a-z0-9\u00c0-\u024f\u0370-\u06ff\u0900-\u097f\u0980-\u09ff\u0a00-\u0a7f\u0a80-\u0aff\u0b00-\u0b7f\u0b80-\u0bff\u0c00-\u0c7f\u0c80-\u0cff\u0d00-\u0d7f\u0e00-\u0e7f\u0e80-\u0eff\u1000-\u109f\u10a0-\u10ff\u1200-\u137f\u1780-\u17ff\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/g, '');
     }
     // 公式側の丸括弧注記(映画・主題歌・OST・アーティスト別名)は情報でない。含む括弧だけ外す。
-    var ANNOTATION = /主題曲|主题曲|片尾曲|插曲|電影|电影|電視劇|电视剧|主題歌|映画|劇場版|ドラマ|OST|soundtrack|theme song|韓劇|韩剧/i;
+    var ANNOTATION = /主題曲|主题曲|片尾曲|插曲|電影|电影|電視劇|电视剧|主題歌|映画|劇場版|ドラマ|OST|soundtrack|theme song|韓劇|韩剧|\bfrom\b/i;
     function stripNotes(s) {
         return s.replace(/[（(【\[][^（(【\[）)】\]]*[）)】\]]/g, function (group) {
             return ANNOTATION.test(group) ? ' ' : group;
         });
     }
+    // ストア側の接尾語。ダッシュ型(リマスター・シングル版・サントラ出典)とコラボ型(with …)。
+    // 両側の曲名に同じ切断を入れる。YTM側に同じ注記があれば消え合うだけで、判断は題名と長さに任せる。
+    var SUFFIX_DASH = /\s*[-\u2013\u2014]\s*(?:from\s+.*|remaster(?:ed)?(?:\s*\(?\d{4}\)?)?|(?:single|album|radio|mono|stereo)\s+(?:version|edit|mix)(?:\s*\/\s*(?:mono|stereo))?|(?:version|edit|mix)\s*\/\s*(?:mono|stereo))$/i;
+    var SUFFIX_WITH = /\s*[(\[](?:with|w\/)\s[^)\]]*[)\]]$/i;
+    var SUFFIX_FROM = /\s*[(\[]from\b[^)\]]*[)\]]$/i;
+    function stripSuffixes(s) {
+        for (var i = 0; i < 3; i++) {
+            var before = s;
+            s = s.replace(SUFFIX_DASH, '').replace(SUFFIX_WITH, '').replace(SUFFIX_FROM, '');
+            if (s === before) break;
+        }
+        return s;
+    }
     function title(value) {
-        var s = stripNotes(normalized(value));
+        var s = stripSuffixes(stripNotes(normalized(value)));
         return letters(s.replace(/\s*(?:\(|\[)?(?:feat|ft)\.?\s+.*/i, '')
             .replace(/\b(official|music|video|audio|lyrics?)\b/gi, ''));
     }
@@ -253,6 +266,22 @@
         var names = [];
         list.forEach(function (a) { a.split(/,|、/).forEach(function (n) { n = artist(n); if (n && names.indexOf(n) < 0) names.push(n); }); });
         return names;
+    }
+    // 緩和判定用: アーティスト名を4字以上の語に切る(letters済みの連結名とは別に、生の名から出す)。
+    function words4(value) {
+        var out = [];
+        String(value || '').replace(CREDITS, '').split(/[\s,、/|&]+/).forEach(function (w) {
+            w = artist(w);
+            if (w.length >= 4 && out.indexOf(w) < 0) out.push(w);
+        });
+        return out;
+    }
+    // 片側がラテン字だけでもう片側に非ラテン字があるとき、アーティスト名の照合そのものが
+    // 不可能(Amatsuki / 天月-あまつき-)。アルバム経路では題名・アルバム・長さが先に通っている
+    // ので、この場合だけ別名として扱う。
+    function crossScript(a, b) {
+        var lo = function (s) { return /^[a-z0-9]*$/.test(letters(s)); };
+        return lo(a) !== lo(b);
     }
     // 表記から言語を判定。アラビア文字はペルシャ語・ウルドゥー語の固有文字で分け、
     // デーヴァナーガリーはヒンディー語として扱う(マラーティー語等も同じ文字)。
@@ -321,7 +350,7 @@
         }
         return true;
     }
-    function score(hit, track) {
+    function score(hit, track, looseArtist) {
         if (!(track.durationMs > 0) || !sameLength(hit.seconds, track)) {
             note('reject ' + hit.id + ': length ' + hit.seconds + 's vs track ' + Math.round(track.durationMs / 1000) + 's');
             return null;
@@ -343,7 +372,9 @@
         var titleScore = similarity(got, wanted);
         // 公式側は曲名の前に転写(ラテン字)を付けたり、注記を残したりする。曲名が
         // そのまま含まれているなら一致とみなす(逆方向は短い別曲を拾う恐れがあるので見ない)。
-        if (wanted.length >= 3 && got.indexOf(wanted) >= 0) titleScore = Math.max(titleScore, 0.9);
+        // CJKの2字題名も救う。公式行は転写接尾語を付けることがある(白日→白日(Hakujitsu))。
+        var cjkTitle = /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/.test(wanted);
+        if (wanted.length >= (cjkTitle ? 2 : 3) && got.indexOf(wanted) >= 0) titleScore = Math.max(titleScore, 0.9);
         if (titleScore < (zh ? 0.75 : 0.85)) {
             note('reject ' + hit.id + ': title ' + titleScore.toFixed(2) + ' (' + got + ' vs ' + wanted + ')');
             return null;
@@ -371,6 +402,17 @@
                 if (points > artistScore) artistScore = points;
             });
         });
+        // アルバム突き合わせ専用の緩和: 4字以上の語を1つでも共有すれば別名(舞台名・旧芸名)と
+        // みなす(Cass Elliot / Mama Cass)。別人のカバー(Connor Spiotto / Annapantsu)は語を
+        // 共有しないので、これは弾かれたまま。
+        if (looseArtist && artistScore === 0) {
+            var shared = words4((track.artist || '') + (track.artists || []).join(' '));
+            var mine = words4((hit.artists || []).join(' '));
+            for (var si = 0; si < shared.length && artistScore === 0; si++) {
+                if (mine.indexOf(shared[si]) >= 0) artistScore = 0.9;
+            }
+            if (artistScore === 0 && crossScript((track.artist || '') + (track.artists || []).join(' '), (hit.artists || []).join(' '))) artistScore = 0.9;
+        }
         if (artistScore < 0.9) {
             note('reject ' + hit.id + ': artist ' + artistScore.toFixed(2));
             return null;
@@ -407,24 +449,69 @@
                 var watch = (first.navigationEndpoint || {}).watchEndpoint || {};
                 var config = (watch.watchEndpointMusicSupportedConfigs || {}).watchEndpointMusicConfig || {};
                 var id = (row.playlistItemData || {}).videoId || watch.videoId || '';
-                var names = [], seconds = 0, album = '', meta = runs(1);
+                var names = [], seconds = 0, album = '', albumId = '', meta = runs(1);
                 meta.forEach(function (r) {
                     var browse = (r.navigationEndpoint || {}).browseEndpoint || {};
                     var type = ((browse.browseEndpointContextSupportedConfigs || {}).browseEndpointContextMusicConfig || {}).pageType;
                     if (type === 'MUSIC_PAGE_TYPE_ARTIST' && r.text) names.push(r.text);
-                    if (type === 'MUSIC_PAGE_TYPE_ALBUM' && r.text) album = r.text;
+                    if (type === 'MUSIC_PAGE_TYPE_ALBUM' && r.text) { album = r.text; albumId = browse.browseId || ''; }
                     if (/^\d{1,3}:\d{2}(?::\d{2})?$/.test(r.text || '')) seconds = r.text.split(':').reduce(function (n, s) { return n * 60 + Number(s); }, 0);
                 });
                 if (!names.length && meta[0] && !meta[0].navigationEndpoint && meta[0].text && !/[•:]/.test(meta[0].text)) names.push(meta[0].text);
                 if (config.musicVideoType === 'MUSIC_VIDEO_TYPE_ATV' && /^[a-zA-Z0-9_-]{11}$/.test(id) && names.length && seconds > 0 && !found[id]) {
                     found[id] = true;
-                    hits.push({ id: id, title: runs(0).map(function (r) { return r.text || ''; }).join(''), artists: names, seconds: seconds, album: album });
+                    hits.push({ id: id, title: runs(0).map(function (r) { return r.text || ''; }).join(''), artists: names, seconds: seconds, album: album, albumId: albumId });
                 }
             }
             Object.keys(node).forEach(function (key) { visit(node[key], depth + 1); });
         }
         visit(data, 0);
         return hits;
+    }
+    var BROWSE_URL = 'https://music.youtube.com/youtubei/v1/browse?prettyPrint=false';
+
+    // アルバム名の比較用。版の注記(Deluxe Edition 等)は情報でない。
+    function albumName(value) {
+        var s = String(value || '').replace(/\s*-\s*(?:single|ep)\s*$/i, '')
+            .replace(/[(\[][^)\]]*(?:deluxe|expanded|edition|remaster|anniversary|bonus|explicit|version)[^)\]]*[)\]]/gi, ' ');
+        return title(s);
+    }
+
+    function parseAlbum(data, albumText) {
+        var found = {}, list = [];
+        function visit(node, depth) {
+            if (!node || typeof node !== 'object' || depth > 14) return;
+            var row = node.musicResponsiveListItemRenderer;
+            if (row) {
+                var columns = row.flexColumns || [];
+                function runs(i) { return (((columns[i] || {}).musicResponsiveListItemFlexColumnRenderer || {}).text || {}).runs || []; }
+                var first = runs(0)[0] || {};
+                var watch = (first.navigationEndpoint || {}).watchEndpoint || {};
+                var config = (watch.watchEndpointMusicSupportedConfigs || {}).watchEndpointMusicConfig || {};
+                var id = (row.playlistItemData || {}).videoId || watch.videoId || '';
+                var names = [], seconds = 0, meta = runs(1);
+                meta.forEach(function (r) {
+                    var browse = (r.navigationEndpoint || {}).browseEndpoint || {};
+                    var type = ((browse.browseEndpointContextSupportedConfigs || {}).browseEndpointContextMusicConfig || {}).pageType;
+                    if (type === 'MUSIC_PAGE_TYPE_ARTIST' && r.text) names.push(r.text);
+                    if (/^\d{1,3}:\d{2}(?::\d{2})?$/.test(r.text || '')) seconds = r.text.split(':').reduce(function (n, s) { return n * 60 + Number(s); }, 0);
+                });
+                (row.fixedColumns || []).forEach(function (c) {
+                    (((c.musicResponsiveListItemFixedColumnRenderer || {}).text || {}).runs || []).forEach(function (r) {
+                        if (/^\d{1,3}:\d{2}(?::\d{2})?$/.test(r.text || '')) seconds = r.text.split(':').reduce(function (n, s) { return n * 60 + Number(s); }, 0);
+                    });
+                });
+                // アルバム収録行は公式MV(OMV)に結び付けられることがある。題名・長さはアルバム側の
+                // 収録情報で担保し、実際の音源の長さは取得時の検査(fileFor)が確認する。
+                if ((config.musicVideoType === 'MUSIC_VIDEO_TYPE_ATV' || config.musicVideoType === 'MUSIC_VIDEO_TYPE_OMV') && /^[a-zA-Z0-9_-]{11}$/.test(id) && seconds > 0 && !found[id]) {
+                    found[id] = true;
+                    list.push({ id: id, title: runs(0).map(function (r) { return r.text || ''; }).join(''), artists: names, seconds: seconds, album: albumText });
+                }
+            }
+            Object.keys(node).forEach(function (key) { visit(node[key], depth + 1); });
+        }
+        visit(data, 0);
+        return list;
     }
     function json(url, body, headers, end) {
         var retried = false, backed = false;
@@ -583,10 +670,62 @@
         var end = Date.now() + 25000, list = queries(track), tried = {}, currentSession = null;
         // 予算を使い切って全候補を見切れていない(見つからないと誤登録しないための目印)。
         var outOfTime = false;
-        // ランキングは同一リクエストでも揺れる。1巡目の後、予算が許す限り2巡目を回す。
+        // アルバム突き合わせ(ランキングに乗らない公式曲のための第2の網)。公式アルバムの
+        // 収録行から、題名・長さ・アルバム名で探す。アーティストは別名を緩和する(上の語の共有)。
+        function tryAlbum() {
+            var wantAlbum = albumName(track.album);
+            if (!wantAlbum || wantAlbum.length < 4) return null;
+            var main = String(track.artist || '').split(',')[0].replace(CREDITS, '').trim();
+            var seenAlbum = {}, rank = [];
+            [track.album + ' ' + main, track.album].forEach(function (query) {
+                if (outOfTime || end - Date.now() < 4500) return;
+                var langs = languages(track);
+                for (var l = 0; l < langs.length && end - Date.now() > 4500; l++) {
+                    try {
+                        search(query, langs[l], end).forEach(function (hit) {
+                            if (!hit.albumId || seenAlbum[hit.albumId]) return;
+                            var gotAlbum = albumName(hit.album), s = similarity(gotAlbum, wantAlbum);
+                            if (wantAlbum.length >= 4 && (gotAlbum.indexOf(wantAlbum) >= 0 || wantAlbum.indexOf(gotAlbum) >= 0)) s = Math.max(s, 0.9);
+                            if (s >= 0.8) { seenAlbum[hit.albumId] = true; rank.push({ id: hit.albumId, s: s, album: hit.album }); }
+                            // ストアと公式で載っているアルバムが違うことがある(ストアはシングル、公式は
+                            // アルバム収録)。題名と長さが一致してアーティスト照合が文字種の壁で不可能な
+                            // 行は、その行のアルバム自身を開いて確かめる(2枠の後順)。
+                            var tw = title(track.title), gw = title(hit.title);
+                            if (tw && gw && (gw === tw || (tw.length >= 2 && gw.indexOf(tw) >= 0)) && sameLength(hit.seconds, track)
+                                && crossScript((track.artist || '') + (track.artists || []).join(' '), (hit.artists || []).join(' '))) {
+                                seenAlbum[hit.albumId] = true;
+                                rank.push({ id: hit.albumId, s: 0.8, album: hit.album });
+                            }
+                        });
+                    } catch (e) {
+                        if (e.rateLimited || e.message === BUDGET) throw e;
+                        myspoti.log(TF('hook-failed', scrub(e.message || e)));
+                    }
+                }
+            });
+            rank.sort(function (a, b) { return b.s - a.s; });
+            for (var a = 0; a < rank.length && a < 2 && end - Date.now() > 3000; a++) {
+                var rows = parseAlbum(json(BROWSE_URL, { context: { client: { clientName: 'WEB_REMIX', clientVersion: CLIENT_VERSIONS[CLIENT], hl: 'en', gl: 'US' } }, browseId: rank[a].id }, { Origin: 'https://music.youtube.com' }, end), rank[a].album);
+                for (var h = 0; h < rows.length && end - Date.now() > 2000; h++) {
+                    var hit = rows[h];
+                    if (tried[hit.id]) continue;
+                    if (score(hit, track, true) === null) continue;
+                    tried[hit.id] = true;
+                    if (!currentSession) currentSession = session(end);
+                    var file = fileFor(hit, track, end, currentSession);
+                    if (file) return file;
+                }
+            }
+            return null;
+        }
+        // ランキングは同一リクエストでも揺れる。1巡目の後、アルバムの網と2巡目を予算が許す限り回す。
         try {
             for (var pass = 0; pass < 2; pass++) {
                 if (pass === 1) {
+                    if (track.album && end - Date.now() > 5000) {
+                        var albumFile = tryAlbum();
+                        if (albumFile) return [albumFile];
+                    }
                     cache = {};
                     myspoti.log(T('research'));
                     currentSession = null;
@@ -617,7 +756,8 @@
         } catch (e) {
             // レート制限中: results対応の本体にはoutcomeで答える(旧本体では投げる)。
             if (e.rateLimited && hasResults()) return rateLimited();
-            throw e;
+            // 予算切れ(アルバム経路の途中を含む)も「見つからない」ではなく「後で再試行」へ。
+            if (e.message === BUDGET) { outOfTime = true; } else { throw e; }
         }
         // 台帳が満ちたまま答えを返すときも「レート制限中」を返す(見つからない誤登録を防ぐ)。
         if (balance() <= 0) {
