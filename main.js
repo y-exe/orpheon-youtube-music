@@ -653,6 +653,9 @@
             if (balance() <= 0) return { live: true, detail: T('status-skipped') };
             REQUESTS.push(Date.now());
             var probe = myspoti.http.get('https://music.youtube.com/', { timeout: 3000 });
+            // 3xxは「届いた」の証拠: 本体のhttpは転送を追跡しないが、APIは転送なしで答える。
+            // ルートページの転送でソース全体を無効化しない(issue #2)。
+            if (probe.status >= 300 && probe.status < 400) return { live: true, detail: 'HTTP ' + probe.status };
             return probe.ok ? { live: true } :
                 { live: false, detail: TF('status-unreachable', probe.status) };
         } catch (e) {

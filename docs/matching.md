@@ -106,6 +106,9 @@ The `status` hook probes `music.youtube.com` once. Unreachability is answered
 honestly (`live: false`) instead of pretending the source works: a timeout, DNS
 failure or dead connection — including a VPN that still holds a network slot with no
 underlying connectivity — means the downloads will fail with the same cause.
+A `3xx` from the probe counts as reachable: the app's http client does not follow
+redirects, but the API endpoints behind it answer without one, so the source stays
+active (the root page redirecting is not a failure).
 Unexpected non-network errors stay fail-open, because they say nothing about reachability.
 
 ## The rate-limit ledger
