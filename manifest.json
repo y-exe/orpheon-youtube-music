@@ -1,8 +1,8 @@
 {
   "id": "net.yexe.myspoti.youtubemusic",
   "name": "YouTube Music Download Helper",
-  "version": "1.0.6",
-  "versionCode": 13,
+  "version": "1.0.7",
+  "versionCode": 14,
   "author": "y-exe",
   "description": "Matches a track's title, artist and length against YouTube Music's official catalog — searching in the song's own script — and saves its original AAC/M4A audio.",
   "homepage": "https://github.com/y-exe/orpheon-youtube-music",
@@ -13,7 +13,7 @@
     "multilingual"
   ],
   "minAppVersion": "1.0.0-beta.1",
-  "changelog": "1.0.6: Works with Orpheon, the app formerly known as Myspoti — the extension now installs on the new Orpheon app (1.0.0-beta.1 and newer) and on Myspoti 2.x. The extension API itself is unchanged, so nothing changes for existing setups.",
+  "changelog": "1.0.7: Matching improvements by @Physicsmaniac — store-side title suffixes (- Remastered, - Single Version, (with …), [From …]) are ignored on both sides, 2-character CJK titles survive transliteration suffixes, and when the search rankings hide an official song the extension reads the official album's own track list (title, length and album name; artist aliases tolerated when the names share a 4+-letter word or are written in another script — another artist's cover is still refused). Status fix for the HTTP 302 report (issue #2): a redirect means the host answered, so the source stays active.\n1.0.6: Works with Orpheon, the app formerly known as Myspoti — the extension now installs on the new Orpheon app (1.0.0-beta.1 and newer) and on Myspoti 2.x. The extension API itself is unchanged, so nothing changes for existing setups.",
   "actions": [
     {
       "name": "download.source",
