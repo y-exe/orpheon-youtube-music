@@ -228,8 +228,20 @@
             .replace(/\u0629/g, '\u0647');
         return s.toLowerCase();
     }
+    // ベトナム語の声調文字をASCIIに畳む表(ストアとYouTubeで声調記号の有無が分かれるため)。
+    var VIET_FROM = 'àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ';
+    var VIET_TO = 'aaaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiioooooooooooooooouuuuuuuuuuuyyyyyd';
     function letters(value) {
-        return normalized(value).replace(/[^a-z0-9\u00c0-\u024f\u0370-\u06ff\u0900-\u097f\u0980-\u09ff\u0a00-\u0a7f\u0a80-\u0aff\u0b00-\u0b7f\u0b80-\u0bff\u0c00-\u0c7f\u0c80-\u0cff\u0d00-\u0d7f\u0e00-\u0e7f\u0e80-\u0eff\u1000-\u109f\u10a0-\u10ff\u1200-\u137f\u1780-\u17ff\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/g, '');
+        var s = normalized(value);
+        // ベトナム語文字(đ ơ ư と Latin Extended Additional)を含む文字列だけ畳む。
+        // 例: "Noo Phước Thịnh" / "Noo Phuoc Thinh" は同じ1形に落ちる。他言語には無影響。
+        if (/[\u0111\u01a1\u01b0\u1ea0-\u1eff]/.test(s)) {
+            s = s.replace(/[\u0111\u01a1\u01b0\u1ea0-\u1eff]/g, function (c) {
+                var at = VIET_FROM.indexOf(c);
+                return at >= 0 ? VIET_TO.charAt(at) : c;
+            });
+        }
+        return s.replace(/[^a-z0-9\u00c0-\u024f\u0370-\u06ff\u0900-\u097f\u0980-\u09ff\u0a00-\u0a7f\u0a80-\u0aff\u0b00-\u0b7f\u0b80-\u0bff\u0c00-\u0c7f\u0c80-\u0cff\u0d00-\u0d7f\u0e00-\u0e7f\u0e80-\u0eff\u1000-\u109f\u10a0-\u10ff\u1200-\u137f\u1780-\u17ff\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/g, '');
     }
     // 公式側の丸括弧注記(映画・主題歌・OST・アーティスト別名)は情報でない。含む括弧だけ外す。
     var ANNOTATION = /主題曲|主题曲|片尾曲|插曲|電影|电影|電視劇|电视剧|主題歌|映画|劇場版|ドラマ|OST|soundtrack|theme song|韓劇|韩剧|\bfrom\b/i;

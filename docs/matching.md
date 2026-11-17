@@ -80,6 +80,11 @@ that passes title and length opens its own album listing as the confirmation.
   ≥ 0.65, because stores write the same artist in simplified and traditional glyphs.
 - **Arabic folding:** hamza seat variants, ى/ي, ة/ه, tatweel and diacritics are folded
   before any comparison — stores and YouTube disagree on them constantly.
+- **Vietnamese folding:** đ, ơ, ư and the tone-marked vowels of Latin Extended
+  Additional are folded to ASCII before comparison — stores and YouTube disagree on
+  them ("Noo Phước Thịnh" / "Noo Phuoc Thinh"), and the comparison range would
+  otherwise delete those letters outright. Strings without Vietnamese characters
+  are untouched.
 - **Score** = title × 0.6 + artist × 0.25 + length closeness × 0.15, plus an album
   adjustment: the search row's album name is compared with the track's album (the
   "- Single"/"- EP" suffix dropped first), and a similarity above 0.6 moves the score
