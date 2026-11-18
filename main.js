@@ -226,21 +226,24 @@
             .replace(/[\u0622\u0623\u0625\u0671]/g, '\u0627')
             .replace(/\u0649/g, '\u064a')
             .replace(/\u0629/g, '\u0647');
+        // 記号を使った転写差(KE$HA / Kesha)。
+        s = s.replace(/\$/g, 's');
         return s.toLowerCase();
     }
-    // ベトナム語の声調文字をASCIIに畳む表(ストアとYouTubeで声調記号の有無が分かれるため)。
-    var VIET_FROM = 'àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ';
-    var VIET_TO = 'aaaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiioooooooooooooooouuuuuuuuuuuyyyyyd';
+    // 拉丁字・ギリシャ字・キリル字のダイアクリティカルマーク(é à ế ơ ư ё…)を1字ずつ分解して
+    // 捨て、ASCIIに畳む。ストアとYouTubeで記号の有無が分かれるため(Phước/Phuoc、
+    // Cariño/Carino、Blasé/Blase)。文字列全体をNFDにするとハングル・かなが崩れるので1字単位。
     function letters(value) {
         var s = normalized(value);
-        // ベトナム語文字(đ ơ ư と Latin Extended Additional)を含む文字列だけ畳む。
-        // 例: "Noo Phước Thịnh" / "Noo Phuoc Thinh" は同じ1形に落ちる。他言語には無影響。
-        if (/[\u0111\u01a1\u01b0\u1ea0-\u1eff]/.test(s)) {
-            s = s.replace(/[\u0111\u01a1\u01b0\u1ea0-\u1eff]/g, function (c) {
-                var at = VIET_FROM.indexOf(c);
-                return at >= 0 ? VIET_TO.charAt(at) : c;
+        if (typeof s.normalize === 'function') {
+            s = s.replace(/[\u00c0-\u024f\u0370-\u04ff\u1e00-\u1eff]/g, function (c) {
+                return c.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
             });
         }
+        // NFDで分解されない特殊文字。đ(ベトナム語)・eth・thorn・エスツェット等。
+        s = s.replace(/\u0111/g, 'd').replace(/\u00f0/g, 'd').replace(/\u00fe/g, 'th')
+            .replace(/\u00df/g, 'ss').replace(/\u00e6/g, 'ae').replace(/\u0153/g, 'oe')
+            .replace(/\u00f8/g, 'o').replace(/\u0142/g, 'l');
         return s.replace(/[^a-z0-9\u00c0-\u024f\u0370-\u06ff\u0900-\u097f\u0980-\u09ff\u0a00-\u0a7f\u0a80-\u0aff\u0b00-\u0b7f\u0b80-\u0bff\u0c00-\u0c7f\u0c80-\u0cff\u0d00-\u0d7f\u0e00-\u0e7f\u0e80-\u0eff\u1000-\u109f\u10a0-\u10ff\u1200-\u137f\u1780-\u17ff\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/g, '');
     }
     // 公式側の丸括弧注記(映画・主題歌・OST・アーティスト別名)は情報でない。含む括弧だけ外す。
@@ -253,19 +256,22 @@
     // ストア側の接尾語。ダッシュ型(リマスター・シングル版・サントラ出典)とコラボ型(with …)。
     // 両側の曲名に同じ切断を入れる。YTM側に同じ注記があれば消え合うだけで、判断は題名と長さに任せる。
     var SUFFIX_DASH = /\s*[-\u2013\u2014]\s*(?:from\s+.*|remaster(?:ed)?(?:\s*\(?\d{4}\)?)?|(?:single|album|radio|mono|stereo)\s+(?:version|edit|mix)(?:\s*\/\s*(?:mono|stereo))?|(?:version|edit|mix)\s*\/\s*(?:mono|stereo))$/i;
+    var SUFFIX_PAREN = /\s*[(\[](?:(?:\d{4}\s+)?remaster(?:ed)?(?:\s*[([]?\d{4}[)\]]?)?|(?:single|album|radio|mono|stereo)\s+(?:version|edit|mix)(?:\s*\/\s*(?:mono|stereo))?|(?:version|edit|mix)\s*\/\s*(?:mono|stereo)|\d{4})[)\]]$/i;
     var SUFFIX_WITH = /\s*[(\[](?:with|w\/)\s[^)\]]*[)\]]$/i;
     var SUFFIX_FROM = /\s*[(\[]from\b[^)\]]*[)\]]$/i;
     function stripSuffixes(s) {
         for (var i = 0; i < 3; i++) {
             var before = s;
-            s = s.replace(SUFFIX_DASH, '').replace(SUFFIX_WITH, '').replace(SUFFIX_FROM, '');
+            s = s.replace(SUFFIX_DASH, '').replace(SUFFIX_PAREN, '').replace(SUFFIX_WITH, '').replace(SUFFIX_FROM, '');
             if (s === before) break;
         }
         return s;
     }
+    // feat表記。「feat.Kicell」のようにドット直後が詰まった形もある。語中のft(Kraft等)は取らない。
+    var FEAT = /\s*(?:\(|\[)?\b(?:feat|ft)\b\.?\s*.*/i;
     function title(value) {
         var s = stripSuffixes(stripNotes(normalized(value)));
-        return letters(s.replace(/\s*(?:\(|\[)?(?:feat|ft)\.?\s+.*/i, '')
+        return letters(s.replace(FEAT, '')
             .replace(/\b(official|music|video|audio|lyrics?)\b/gi, ''));
     }
     function artist(value) {
@@ -289,12 +295,14 @@
         return out;
     }
     // 片側がラテン字だけでもう片側に非ラテン字があるとき、アーティスト名の照合そのものが
-    // 不可能(Amatsuki / 天月-あまつき-)。アルバム経路では題名・アルバム・長さが先に通っている
-    // ので、この場合だけ別名として扱う。
+    // 不可能(Amatsuki / 天月-あまつき-、Odeya / עודיה)。題名・長さが先に通っている場合に限り
+    // 別表記として扱う。
     function crossScript(a, b) {
         var lo = function (s) { return /^[a-z0-9]*$/.test(letters(s)); };
         return lo(a) !== lo(b);
     }
+    // 非ラテン字(起源市場の文字)の有無。ギリシャ・キリル・アラビア等からCJK・ハングルまで。
+    var NATIVE = /[\u0300-\u1fff\u3000-\u9fff\uf900-\ufaff\uac00-\ud7af]/;
     // 表記から言語を判定。アラビア文字はペルシャ語・ウルドゥー語の固有文字で分け、
     // デーヴァナーガリーはヒンディー語として扱う(マラーティー語等も同じ文字)。
     function languageOf(track) {
@@ -321,7 +329,9 @@
     function queries(track) {
         var main = String(track.artist || '').split(',')[0].replace(CREDITS, '').trim();
         var name = String(track.title || '').trim();
-        var bare = name.replace(/\s*(?:\(|\[)?(?:feat|ft)\.?\s+.*/i, '').trim();
+        // 検索にも題名と同じ切断を入れる。出典括弧(From …)が入ると公式行より
+        // 数字・記号だらけの別曲が上位に出る市場(テルグ・タミル等)がある。
+        var bare = (stripSuffixes(stripNotes(name).replace(FEAT, '')).trim()) || name;
         var words = bare.replace(/[^a-zA-Z0-9\u00c0-\u024f\u0370-\u06ff\u0900-\u097f\u0980-\u09ff\u0a00-\u0a7f\u0a80-\u0aff\u0b00-\u0b7f\u0b80-\u0bff\u0c00-\u0c7f\u0c80-\u0cff\u0d00-\u0d7f\u0e00-\u0e7f\u0e80-\u0eff\u1000-\u109f\u10a0-\u10ff\u1200-\u137f\u1780-\u17ff\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af\s]/g, ' ').replace(/\s+/g, ' ').trim();
         var out = [];
         [name + ' ' + main, bare + ' ' + main, words + ' ' + main, bare].forEach(function (q) {
@@ -350,8 +360,8 @@
         var diff = seconds * 1000 - track.durationMs;
         return diff >= -5000 && diff <= 15000;
     }
-    // 非ラテン字の名前同士は語順の違い(姓+名の順が入れ替わる等)を吸収する:
-    // ストア名(4字以上)の各文字が重複込みで相手にすべて含まれれば一致扱いにする。
+    // 語順の違い(姓+名の順が入れ替わる等)を吸収する: ストア名(4字以上)の各文字が
+    // 重複込みで相手にすべて含まれれば一致扱いにする。
     function contained(name, other) {
         if (name.length < 4) return false;
         var pool = other, i, at;
@@ -387,13 +397,18 @@
         // CJKの2字題名も救う。公式行は転写接尾語を付けることがある(白日→白日(Hakujitsu))。
         var cjkTitle = /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/.test(wanted);
         if (wanted.length >= (cjkTitle ? 2 : 3) && got.indexOf(wanted) >= 0) titleScore = Math.max(titleScore, 0.9);
+        // 逆包含: ストアが転写や注記を後ろに付けた形(แพ้คําว่ารัก(Pae Kum Wah Ruk)、
+        // Midnight Train 심야행)。ストア側に起源市場の文字があるときだけ許し、純ラテン字の
+        // 市場では短い別曲を拾わないようにする(Love Story (Taylor's Version))。
+        if (got.length >= (cjkTitle ? 3 : 5) && wanted.indexOf(got) === 0 && NATIVE.test(wanted)) titleScore = Math.max(titleScore, 0.9);
         if (titleScore < (zh ? 0.75 : 0.85)) {
             note('reject ' + hit.id + ': title ' + titleScore.toFixed(2) + ' (' + got + ' vs ' + wanted + ')');
             return null;
         }
         var names = artistNames(track), channels = [];
         hit.artists.forEach(function (a) {
-            String(a).split(/\s+[/|&]\s+|,|、/).forEach(function (c) {
+            // 「X feat. Y」は名前を分ける(候補の名前欄に参加アーティストが付くことがある)。
+            String(a).split(/\s+[/|&]\s+|,|、|\s+(?:feat|ft)\.?\s*|\s*[(\[](?:feat|ft)\b\.?\s*[^)\]]*[)\]]/i).forEach(function (c) {
                 c = artist(c);
                 if (c && channels.indexOf(c) < 0) channels.push(c);
             });
@@ -409,11 +424,17 @@
                 var points = c === n ? 1.0 :
                     Math.min(c.length, n.length) >= min && (c.indexOf(n) >= 0 || n.indexOf(c) >= 0) ? 0.9 :
                     zh && similarity(c, n) >= 0.65 ? 0.9 :
-                    foreign && contained(n, c) ? 0.9 :
+                    contained(n, c) ? 0.9 :
+                    n.length >= 3 && c.indexOf(n) >= 0 && NATIVE.test(c) ? 0.9 :
                     foreign && similarity(c, n) >= 0.85 ? 0.9 : 0;
                 if (points > artistScore) artistScore = points;
             });
         });
+        // 検索経路の緩和: 題名がほぼ一致(0.9以上)して長さも合うのに、芸名の文字種だけが違う
+        // (Odeya / עודיה、Mayday / 五月天、藤井風 / Fujii Kaze)。カバーは題名に版違いの語が
+        // 残るか芸名が同文字種なので、この条件では拾わない。
+        if (artistScore === 0 && titleScore >= 0.9 &&
+            crossScript((track.artist || '') + (track.artists || []).join(' '), (hit.artists || []).join(' '))) artistScore = 0.9;
         // アルバム突き合わせ専用の緩和: 4字以上の語を1つでも共有すれば別名(舞台名・旧芸名)と
         // みなす(Cass Elliot / Mama Cass)。別人のカバー(Connor Spiotto / Annapantsu)は語を
         // 共有しないので、これは弾かれたまま。

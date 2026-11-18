@@ -1113,21 +1113,23 @@
         "download.source": "YouTube Musicの公式楽曲からダウンロード音源を探す",
         "network": "楽曲の検索、音源URLの取得、有効性の確認"
       },
-      "changelog": "1.0.7: @Physicsmaniac による照合改善 — ストア側の接尾語(- Remastered、- Single Version、(with …)、[From …]など)を両側で無視し、2文字のCJK曲名が転写接尾語に耐え、ランキングに公式曲が隠れたときはアルバム経路で公式アルバムの曲目リストを直接照合します(題名・長さ・アルバム名で判定。名前が4文字以上の語を共有するか、文字種が違うアーティスト別名は許容、他人のカバーは拒否のまま)。302リダイレクトでソースが無効になる問題を修正(issue #2): 転送はホストが応答した証拠なので、ソースは有効のままです。"
+      "changelog": "1.0.8: 照合の修正: ラテン・ギリシャ・キリル字のアクセント記号を比較の前に畳み(Cariño/Carino)、(Remastered 2011)/(Album Version)などの版語括弧を両側の曲名から外し、題名と長さが合っていればカタログと文字種の違うアーティスト名も一致扱いにします(Odeya/עודיה、Mayday/五月天、藤井 風/Fujii Kaze)。語順(UTADA HIKARU/Hikaru Utada)や表記の遊び(KE$HA/Kesha)も吸収し、検索クエリに映画サントラの注記が混ざらなくなりました。"
     },
     "ko": {
       "description": "곡 제목·아티스트·길이를 대조하여 YouTube Music의 공식 곡을 AAC로 저장합니다. 곡의 표기 언어(일본어·한국어·중국어·러시아어 등)에 맞춰 검색합니다.",
       "actions": {
         "download.source": "YouTube Music의 공식 곡에서 다운로드 음원을 찾습니다",
         "network": "곡 검색, 음원 URL 가져오기, 유효성 확인"
-      }
+      },
+      "changelog": "1.0.8: 매칭 수정: 라틴·그리스·키릴 문자의 악센트를 비교 전에 통일하고(Cariño/Carino), (Remastered 2011)/(Album Version) 같은 판본 표기를 양쪽 제목에서 잘라내며, 제목과 길이가 맞으면 카탈로그와 문자가 다른 아티스트 이름도 같은 아티스트로 봅니다(Odeya/עודיה, Mayday/五月天). 이름 순서(UTADA HIKARU/Hikaru Utada)와 표기 유희(KE$HA/Kesha)도 흡수하고, 검색어에 영화 OST 주석이 섞이지 않게 했습니다."
     },
     "zh": {
       "description": "将曲名、艺人和时长与 YouTube Music 官方曲库比对——按歌曲本身的文字搜索——并保存其原始 AAC/M4A 音频。",
       "actions": {
         "download.source": "在 YouTube Music 的官方歌曲中查找下载音源",
         "network": "搜索歌曲、获取音源 URL 并检查其有效性"
-      }
+      },
+      "changelog": "1.0.8: 匹配修复: 拉丁/希腊/西里尔字母的重音符号在比较前折叠(Cariño/Carino),并从两侧曲名中去除 (Remastered 2011)/(Album Version) 等版本括注;标题与时长一致时,与曲库书写系统不同的艺人名也视为同一艺人(Odeya/עודיה、Mayday/五月天、藤井 風/Fujii Kaze)。姓名语序(UTADA HIKARU/Hikaru Utada)与 $ 记号(KE$HA/Kesha)同样被吸收,搜索词不再混入电影原声标注。"
     },
     "zh-hk": {
       "description": "將曲名、藝人與時長和 YouTube Music 官方曲庫比對——依歌曲本身的文字搜尋——並儲存其原始 AAC/M4A 音訊。",
@@ -1148,14 +1150,16 @@
       "actions": {
         "download.source": "Buscar el audio de descarga entre las canciones oficiales de YouTube Music",
         "network": "Buscar canciones, obtener sus URL de audio y comprobarlas"
-      }
+      },
+      "changelog": "1.0.8: Correcciones de emparejamiento: los acentos latinos, griegos y cirílicos se pliegan antes de comparar (Cariño/Carino), las notas de edición como (Remastered 2011)/(Album Version) se recortan de ambos títulos y un artista escrito en otra escritura que el catálogo cuenta cuando el título y la duración coinciden (Odeya/עודיה, Mayday/五月天). También se absorben el orden de los nombres (UTADA HIKARU/Hikaru Utada) y los estilos con $ (KE$HA/Kesha), y las notas de bandas sonoras dejan de ensuciar las búsquedas."
     },
     "pt": {
       "description": "Compara o título, o artista e a duração da faixa com o catálogo oficial do YouTube Music — procurando na escrita da própria canção — e guarda o áudio AAC/M4A original.",
       "actions": {
         "download.source": "Encontrar o áudio de descarga entre as músicas oficiais do YouTube Music",
         "network": "Pesquisar músicas, obter os URL dos áudios e verificá-los"
-      }
+      },
+      "changelog": "1.0.8: Correções de correspondência: acentos latinos, gregos e cirílicos são dobrados antes da comparação (Cariño/Carino), notas de edição como (Remastered 2011)/(Album Version) são cortadas dos dois títulos e um artista escrito em outro alfabeto conta quando título e duração coincidem (Odeya/עודיה, Mayday/五月天). A ordem dos nomes (UTADA HIKARU/Hikaru Utada) e estilos com $ (KE$HA/Kesha) também são absorvidos, e notas de trilhas sonoras deixam de sujar as buscas."
     },
     "pt-br": {
       "description": "Compara o título, o artista e a duração da faixa com o catálogo oficial do YouTube Music — buscando na escrita da própria canção — e salva o áudio AAC/M4A original.",
@@ -1169,14 +1173,16 @@
       "actions": {
         "download.source": "Trouver l'audio à télécharger parmi les chansons officielles de YouTube Music",
         "network": "Chercher des chansons, obtenir leurs URL audio et les vérifier"
-      }
+      },
+      "changelog": "1.0.8: Corrections de correspondance : les accents latins, grecs et cyrilliques sont repliés avant comparaison (Cariño/Carino), les mentions d’édition comme (Remastered 2011)/(Album Version) sont retirées des deux titres et un artiste écrit dans une autre écriture que le catalogue compte lorsque le titre et la durée concordent (Odeya/עודיה, Mayday/五月天). L’ordre des noms (UTADA HIKARU/Hikaru Utada) comme les styles en $ (KE$HA/Kesha) sont absorbés, et les mentions de bandes originales ne polluent plus les requêtes."
     },
     "de": {
       "description": "Gleicht Titel, Künstler und Länge des Titels mit dem offiziellen Katalog von YouTube Music ab — sucht in der Schrift des Songs selbst — und speichert sein ursprüngliches AAC/M4A-Audio.",
       "actions": {
         "download.source": "Download-Audio unter YouTube Musics offiziellen Songs finden",
         "network": "Songs suchen, Audio-URLs holen und prüfen"
-      }
+      },
+      "changelog": "1.0.8: Abgleich-Korrekturen: Lateinische, griechische und kyrillische Akzente werden vor dem Vergleich gefaltet (Cariño/Carino), Editionsangaben wie (Remastered 2011)/(Album Version) werden auf beiden Seiten entfernt und ein Künstler in einer anderen Schrift zählt, wenn Titel und Länge passen (Odeya/עודיה, Mayday/五月天). Namensreihenfolgen (UTADA HIKARU/Hikaru Utada) und Schreibungen wie KE$HA/Kesha werden ebenfalls aufgefangen, und Soundtrack-Anmerkungen verunreinigen die Suchanfragen nicht mehr."
     },
     "it": {
       "description": "Confronta titolo, artista e durata del brano con il catalogo ufficiale di YouTube Music — cercando nella scrittura della canzone stessa — e salva l'audio AAC/M4A originale.",
@@ -1351,7 +1357,8 @@
       "actions": {
         "download.source": "Найти скачиваемый звук среди официальных песен YouTube Music",
         "network": "Искать песни, получать их аудио-адреса и проверять их"
-      }
+      },
+      "changelog": "1.0.8: Исправления сопоставления: диакритика латиницы, греческого и кириллицы складывается перед сравнением (Cariño/Carino), пометки издания вроде (Remastered 2011)/(Album Version) убираются с обоих названий, а артист, записанный другой письменностью, засчитывается, когда название и длительность совпадают (Odeya/עודיה, Mayday/五月天). Порядок имён (UTADA HIKARU/Hikaru Utada) и написания вроде KE$HA/Kesha тоже поглощаются, а пометки саундтреков больше не портят поисковые запросы."
     },
     "uk": {
       "description": "Порівнює назву, виконавця та тривалість треку з офіційним каталогом YouTube Music — шукає письменністю самої пісні — і зберігає початкове аудіо AAC/M4A.",

@@ -37,10 +37,13 @@ candidate. Everything happens inside Orpheon's 25 s hook budget.
 | Latin only | `en` | US |
 
 Store-side suffixes are cut from **both** titles before any comparison: dash forms
-(`- Remastered`, `- Single Version / Mono`, `- From "…" Soundtrack`), trailing
-`(with …)` groups and `[From "movie"]` brackets. The same cuts run on the YouTube
-title, so a note kept on one store and dropped on the other converges instead of
-diverging. Words that merely reorder the title are left alone.
+(`- Remastered`, `- Single Version / Mono`, `- From "…" Soundtrack`), parenthesized
+edition words (`(Remastered 2011)`, `(Album Version)`, `(Radio Edit)`, `(2016)`),
+trailing `(with …)` groups and `[From "movie"]` brackets. The same cuts run on the
+YouTube title, so a note kept on one store and dropped on the other converges instead
+of diverging. Words that mark a different recording (`(Live)`, `(Remix)`) are never
+cut. The queries built from the title get the same cuts, and `feat.` groups are
+removed even when written without a space after the dot (`Onaji Hanashi feat.Kicell`).
 
 When the search passes find nothing and the track carries an album, one extra pass
 searches the album's name, opens the official album on YouTube Music and matches the
@@ -72,19 +75,33 @@ that passes title and length opens its own album listing as the confirmation.
   traditional glyphs. A store title that appears verbatim inside the YouTube title
   (transliteration prefixes, leftover notes) counts as 0.9 — also for 2-character
   CJK titles, whose official rows carry a transliteration suffix (白日 → 白日 (Hakujitsu)).
+  The reverse counts too, but only when the store title carries a non-Latin script
+  (แพ้คําว่ารัก (Pae Kum Wah Ruk), Midnight Train 심야행): pure-Latin markets keep
+  refusing a shorter YouTube title, so `Love Story (Taylor's Version)` never
+  accepts the plain original.
 - **Artist equality or containment ≥ 0.9:** exact match, or containment of the store
   name in the channel name (or the reverse) — minimum 2 characters for CJK, kana and
   hangul names, 4 for Latin ones, so short CJK artist names survive alias suffixes
   while short Latin fragments never count. Channel suffixes `- Topic`/`VEVO` and
-  parenthetical aliases are stripped first. Chinese additionally accepts similarity
-  ≥ 0.65, because stores write the same artist in simplified and traditional glyphs.
+  parenthetical aliases are stripped first, `feat.` groups in the artist column are
+  split into separate names, and a 3+-character store name counts when it is a
+  prefix of a mixed-script channel name (`G.E.M.` / `G.E.M.鄧紫棋`). Name order
+  (`UTADA HIKARU` / `Hikaru Utada`) is absorbed for every script by letter-multiset
+  containment. Chinese additionally accepts similarity ≥ 0.65, because stores write
+  the same artist in simplified and traditional glyphs. When the title already
+  matched at 0.9+ and the length fits, an artist written in a different script than
+  the catalog's (`Odeya` / `עודיה`, `Mayday` / `五月天`, `藤井 風` / `Fujii Kaze`)
+  counts as the same artist — a cover keeps a same-script name or a version word, so
+  this does not open the door to covers.
 - **Arabic folding:** hamza seat variants, ى/ي, ة/ه, tatweel and diacritics are folded
   before any comparison — stores and YouTube disagree on them constantly.
-- **Vietnamese folding:** đ, ơ, ư and the tone-marked vowels of Latin Extended
-  Additional are folded to ASCII before comparison — stores and YouTube disagree on
-  them ("Noo Phước Thịnh" / "Noo Phuoc Thinh"), and the comparison range would
-  otherwise delete those letters outright. Strings without Vietnamese characters
-  are untouched.
+- **Latin folding:** every Latin, Greek or Cyrillic letter with a diacritic is
+  decomposed per character and folded to its base (é→e, ế→e, ñ→n, ё→е), plus
+  đ→d, ß→ss, æ→ae, ø→o. Stores and YouTube disagree on the marks constantly
+  (`Cariño`/`Carino`, `Noo Phước Thịnh`/`Noo Phuoc Thinh`), and the comparison
+  range would otherwise delete such letters outright. CJK, kana and hangul are
+  folded per character so NFD decomposition never breaks them; `$` folds to `s`
+  (`KE$HA`/`Kesha`).
 - **Score** = title × 0.6 + artist × 0.25 + length closeness × 0.15, plus an album
   adjustment: the search row's album name is compared with the track's album (the
   "- Single"/"- EP" suffix dropped first), and a similarity above 0.6 moves the score
@@ -159,3 +176,13 @@ Rejections and per-candidate scores are printed with the `reject …`/`accept �
 when the harness runs, which is how language-specific gate problems get diagnosed.
 Run the harness at the same song count for every language before releasing: matching
 quality should be equal across scripts, not only where the maintainer can read them.
+
+For a wider net, `scripts/batch-collect.js` gathers up to 100 tracks per language from
+the Deezer catalog — chart, indie and genre playlists, with a track search fallback and
+a relaxed second pass for languages Deezer writes in romanization — and
+`scripts/batch-run.js` replays them through the same harness with a per-language pass
+rate. The 2026-11 run covered 3,474 tracks across 36 languages and drove the folding,
+edition-word and cross-script fixes in v1.0.8. What still fails there is mostly a
+catalog row whose length drifts beyond the window (film songs on Indian stores), a
+transliteration-only catalog row, or Deezer's katakana-ized metadata for international
+tracks — catalog and store artifacts, not gate bugs.

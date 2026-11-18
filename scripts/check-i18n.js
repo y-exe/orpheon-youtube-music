@@ -89,6 +89,20 @@ for (const [lang, entry] of Object.entries(t)) {
     }
 }
 
+// changelogは現行バージョンだけを語る。過去の版の文を残すとストア表示が伸びるだけなので、
+// バージョン番号の接頭語(「1.0.8: …」)が現行版ちょうど1つであることを全言語で要求する。
+function changelogVersions(text) {
+    return [...new Set((String(text || '').match(/\b\d+\.\d+\.\d+\s*:/g) || []).map(v => v.replace(/\s*:/, '')))];
+}
+const expect = JSON.stringify([manifest.version]);
+const base = changelogVersions(manifest.changelog);
+if (JSON.stringify(base) !== expect) problems.push('manifest.json changelog: must describe exactly ' + manifest.version + ' (found: ' + (base.join(', ') || 'none') + ')');
+for (const [lang, entry] of Object.entries(t)) {
+    if (!entry.changelog) continue;
+    const found = changelogVersions(entry.changelog);
+    if (JSON.stringify(found) !== expect) problems.push('translations "' + lang + '": changelog must describe exactly ' + manifest.version + ' (found: ' + (found.join(', ') || 'none') + ')');
+}
+
 if (problems.length) {
     console.error(problems.join('\n'));
     process.exit(1);
